@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AiVocado Production</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+<!-- ===== ALL PROJECTS SCREEN ===== -->
+<div class="all-projects-screen" id="allProjectsScreen">
+  <div class="ap-topbar">
+    <div class="logo">
+      <div class="logo-icon">🥑</div>
+      AiV Production
+    </div>
+    <div class="ap-search-btn" onclick="apOpenSearch()">🔍 Поиск проектов...</div>
+    <div class="ap-user">
+      <div class="ap-user-avatar">👨‍💻</div>
+      Алекс
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtnMain" title="Сменить тему">🌙</button>
+  </div>
+  <div class="ap-content">
+    <div class="ap-header">
+      <div class="ap-title">Проекты</div>
+      <button class="ap-create-btn" onclick="apCreateProject()">✚ Создать проект</button>
+    </div>
+    <div class="ap-tabs" id="apTabs">
+      <div class="ap-tab active" data-tab="all" onclick="apSwitchTab('all')">Все <span class="ap-tab-count" id="apCountAll">0</span></div>
+      <div class="ap-tab" data-tab="my" onclick="apSwitchTab('my')">Мои <span class="ap-tab-count" id="apCountMy">0</span></div>
+      <div class="ap-tab" data-tab="team" onclick="apSwitchTab('team')">Команды <span class="ap-tab-count" id="apCountTeam">0</span></div>
+      <div class="ap-tab" data-tab="deleted" onclick="apSwitchTab('deleted')">Недавно удалённые <span class="ap-tab-count" id="apCountDeleted">0</span></div>
+    </div>
+    <div class="ap-toolbar" id="apToolbar" style="display:none">
+      <button class="ap-clear-all-btn" onclick="apClearAllDeleted()">Очистить всё</button>
+    </div>
+    <div class="ap-grid" id="apGrid">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Search overlay -->
+<div class="ap-search-overlay" id="apSearchOverlay" onclick="if(event.target===this)apCloseSearch()">
+  <div class="ap-search-box">
+    <div class="ap-search-input-row">
+      <span>🔍</span>
+      <input class="ap-search-input" id="apSearchInput" placeholder="Введите название проекта..." oninput="apFilterSearch(this.value)">
+      <div class="ap-search-close" onclick="apCloseSearch()">Esc</div>
+    </div>
+    <div class="ap-search-results" id="apSearchResults"></div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="ap-context-menu" id="apContextMenu">
+  <div class="ap-context-item" onclick="apRenameProject()">✏️ Переименовать</div>
+  <div class="ap-context-item" onclick="apDuplicateProject()">📋 Дублировать</div>
+  <div class="ap-context-item" onclick="apShareProject()">🔗 Поделиться</div>
+  <div class="ap-context-divider"></div>
+  <div class="ap-context-item danger" onclick="apDeleteProject()">🗑 Удалить</div>
+</div>
+
+<!-- Context menu for deleted -->
+<div class="ap-context-menu" id="apContextMenuDeleted">
+  <div class="ap-context-item" onclick="apRestoreDeletedProject()">↩ Восстановить</div>
+  <div class="ap-context-divider"></div>
+  <div class="ap-context-item danger" onclick="apDeleteForeverProject()">🗑 Удалить навсегда</div>
+</div>
+
+<div class="app" id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="logo" onclick="apShowAllProjects()" style="cursor:pointer" title="Все проекты">
+      <div class="logo-icon">🥑</div>
+      AiV Production
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-project">
+      <input type="text" value="Красная шапочка: Киберпанк" id="projectName">
+    </div>
+
+    <!-- Pipeline Header (centered in topbar) -->
+    <div class="pipeline-header" id="pipelineHeader">
+      <div class="pipeline-stage active" style="--stage-color: var(--accent-script)" data-stage="script">
+        <span class="dot"></span> ✍️ Сценарий
+      </div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-stage" style="--stage-color: var(--accent-art)" data-stage="storyboard">
+        <span class="dot"></span> 🎬 Сториборд
+      </div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-stage" style="--stage-color: var(--accent-art)" data-stage="canvas">
+        <span class="dot"></span> 🎨 Канва
+      </div>
+
+    </div>
+
+    <div class="topbar-right">
+      <div class="progress-ring">
+        <div class="progress-dots">
+          <span class="done"></span>
+          <span class="done"></span>
+          <span class="current"></span>
+        </div>
+        Этап 3 из 3
+      </div>
+      <select class="aspect-select">
+        <option>16:9</option>
+        <option>9:16</option>
+        <option>1:1</option>
+        <option>4:3</option>
+        <option>21:9</option>
+      </select>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Сменить тему">🌙</button>
+      <button class="topbar-btn btn-preview" onclick="showPreview()">▶ Preview</button>
+      <button class="topbar-btn btn-export" onclick="showExportModal()">↓ Export</button>
+    </div>
+  </div>
+
+  <!-- WORKSPACE PANEL (leftmost) -->
+  <div class="workspace-panel" id="workspacePanel">
+    <div class="workspace-header">
+      <div class="workspace-title">Workspace</div>
+      <button class="panel-collapse-btn" onclick="toggleWorkspace()" title="Свернуть панель">◀</button>
+    </div>
+    <!-- Global Search -->
+    <div class="workspace-search">
+      <span class="workspace-search-icon">🔍</span>
+      <input type="text" id="projectSearch" placeholder="Поиск проектов..." oninput="searchProjects(this.value)">
+    </div>
+    <button class="workspace-create-btn" onclick="document.getElementById('newProjectModal').classList.add('visible')">
+      <span>✚</span> Создать проект
+    </button>
+    <!-- Quick Nav -->
+    <div style="padding: 0 8px;">
+      <div class="workspace-nav-item" onclick="filterWorkspace('favorites', this)">
+        <span class="workspace-nav-icon">⭐</span>
+        <span class="workspace-nav-label">Избранное</span>
+        <span class="workspace-nav-count" id="favoritesCount">0</span>
+      </div>
+    </div>
+    <div class="workspace-divider" style="margin: 2px 10px;"></div>
+    <!-- Project Folder Tree -->
+    <div class="workspace-nav" id="workspaceTree">
+      <!-- populated by JS -->
+    </div>
+    <!-- Archive Section -->
+    <div class="workspace-divider" style="margin: 2px 10px;"></div>
+    <div class="workspace-archive-toggle" onclick="toggleArchive()">
+      <span class="archive-arrow" id="archiveArrow">▶</span>
+      <span>📦 Архив</span>
+      <span class="ws-tree-count" id="archiveCount">3</span>
+    </div>
+    <div class="workspace-archive-list" id="archiveList">
+      <!-- populated by JS -->
+    </div>
+    <!-- Trash Section -->
+    <div class="workspace-divider" style="margin: 2px 10px;"></div>
+    <div class="workspace-archive-toggle" onclick="toggleTrash()">
+      <span class="archive-arrow" id="trashArrow">▶</span>
+      <span>🗑 Корзина</span>
+      <span class="ws-tree-count" id="trashCount">0</span>
+    </div>
+    <div class="workspace-archive-list" id="trashList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <!-- LEFT SIDEBAR: Project Files (Tree) -->
+  <div class="sidebar-left" id="sidebarFiles">
+    <div class="sidebar-section" style="display:flex; align-items:center; justify-content:center; position:relative;">
+      <div class="sidebar-label" style="margin-bottom:0">Проект:</div>
+      <button class="panel-collapse-btn" onclick="toggleFiles()" title="Свернуть панель">◀</button>
+    </div>
+    <div class="sidebar-section" style="padding-top:8px; padding-bottom:8px;">
+      <div class="settings-row" style="margin-top:0">
+        <div class="setting-chip selected" style="font-size:10px">Все <span style="opacity:0.5">8</span></div>
+        <div class="setting-chip" style="font-size:10px">Черновик <span style="opacity:0.5">3</span></div>
+        <div class="setting-chip" style="font-size:10px">Готово <span style="opacity:0.5">2</span></div>
+      </div>
+    </div>
+    <div class="file-tree" id="fileTree">
+      <!-- populated by JS -->
+    </div>
+    <button class="add-scene-btn" onclick="addScene()">+ Добавить сцену</button>
+  </div>
+
+  <!-- Panel expand buttons (when collapsed) -->
+  <div class="panel-toggle-strip">
+    <button class="panel-expand-btn" id="expandWorkspace" onclick="toggleWorkspace()" title="Workspace">▶</button>
+    <button class="panel-expand-btn" id="expandFiles" onclick="toggleFiles()" title="Проект:">▶</button>
+  </div>
+
+  <!-- MAIN CANVAS -->
+  <div class="main-canvas" id="mainCanvas">
+
+    <!-- STAGE: Script -->
+    <div class="stage-content active" id="stage-script">
+      <div class="script-area">
+        <div class="script-input-block">
+          <div class="block-title" style="color: var(--accent-script)">✍️ Сценарий</div>
+          <div class="block-subtitle">Загрузите или напишите текст. AI-сценарист разобьёт его на сцены.</div>
+          <textarea class="script-textarea" id="scriptText" oninput="updateScriptMeta()" placeholder="Каждый абзац (пустая строка между блоками) = один кадр.
+
+Пример:
+
+Радиоактивный лес. Механические деревья с неоновой подсветкой. Туман стелется по земле.
+
+Красная Шапочка идёт по тропе в кибер-плаще с LED-полосами. Держит корзину с медикаментами.
+
+На тропе появляется Волк-андроид. Голограммные глаза сканируют девушку."></textarea>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;display:flex;gap:12px;" id="scriptMeta">
+            <span id="scriptWords">0 слов</span>
+            <span id="scriptChars">0 символов</span>
+            <span id="scriptScenes" style="color:var(--accent-script)"></span>
+          </div>
+          <div class="settings-row" style="margin-top:8px;">
+            <div class="setting-chip selected" onclick="this.classList.toggle('selected')">🎬 Фильм</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">📺 Сериал</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">📱 Короткий ролик</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">🎵 Клип</div>
+          </div>
+          <div class="settings-row">
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">Киберпанк</div>
+            <div class="setting-chip selected" onclick="this.classList.toggle('selected')">Постапокалипсис</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">Нуар</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">Фэнтези</div>
+            <div class="setting-chip" onclick="this.classList.toggle('selected')">Реализм</div>
+            <div class="setting-chip" onclick="addCustomGenre(this)">+ Свой</div>
+          </div>
+          <div class="action-bar">
+            <button class="action-btn primary" id="breakdownBtn" onclick="generateBreakdown()">✦ Разбить на сцены</button>
+            <button class="action-btn" onclick="uploadScriptFile()">↑ Загрузить файл</button>
+            <button class="action-btn" onclick="clearScript()">🗑 Очистить</button>
+          </div>
+        </div>
+        <div class="scene-breakdown" id="sceneBreakdown">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="block-title">📋 Разбивка на сцены</div>
+            <span id="breakdownCount" style="font-size:11px;color:var(--accent-script);font-weight:600;"></span>
+          </div>
+          <div class="block-subtitle">Каждый абзац = один кадр. Редактируйте названия и текст прямо здесь.</div>
+          <div id="breakdownList" style="margin-top: 12px;">
+            <div class="empty-state" style="height: auto; padding: 40px 20px;">
+              <div class="empty-icon">✍️</div>
+              <div class="empty-desc" style="font-size: 12px;">Напишите сценарий и нажмите «Разбить на сцены»</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE: Storyboard -->
+    <div class="stage-content" id="stage-storyboard">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div>
+          <div class="block-title" id="sbStageTitle" style="color: var(--accent-art)">🎬 Сториборд</div>
+          <div class="block-subtitle" id="sbStageSubtitle">От слов, через эскизы, к видео.</div>
+        </div>
+        <!-- Storyboard Toolbar (between subtitle and generate button) -->
+        <div class="storyboard-toolbar" style="margin-bottom:0; padding:0;">
+          <div class="sb-mode-switcher">
+            <button class="sb-mode-btn active" id="sbModeDevBtn" onclick="switchSbMode('dev')">⚙ Разработка</button>
+            <button class="sb-info-toggle" id="sbModeCompactBtn" onclick="switchSbMode('compact')" title="Без подробностей"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="var(--text-muted)" stroke-width="1.5"/><circle cx="8" cy="4.5" r="0.9" fill="var(--text-muted)"/><line x1="8" y1="7" x2="8" y2="12" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round"/><line class="info-strike" x1="2.5" y1="13.5" x2="13.5" y2="2.5" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/></svg></button>
+            <button class="sb-icon-toggle" id="sbModePresentBtn" onclick="switchSbMode('presentation')" title="Утверждённые"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="var(--text-muted)" stroke-width="1.5"/><polyline points="4.5,8.5 7,11 11.5,5.5" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          </div>
+          <div class="sb-sync-toggle">
+            Sync <div class="mini-toggle" onclick="this.classList.toggle('off')"></div>
+          </div>
+          <div class="sb-size-group">
+            Размер:
+            <button class="sb-size-btn" onclick="setSbSize('S',this)">S</button>
+            <button class="sb-size-btn active" onclick="setSbSize('M',this)">M</button>
+            <button class="sb-size-btn" onclick="setSbSize('L',this)">L</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="action-btn" onclick="generateAllSketches()">✦ Сгенерировать все эскизы</button>
+        </div>
+      </div>
+      <div class="sb-canvas-toolbar" id="sbCanvasToolbar">
+        <button class="sb-tool-btn active" id="sbToolSelect" onclick="setSbTool('select')" title="Выбор">↖</button>
+        <button class="sb-tool-btn" id="sbToolPan" onclick="setSbTool('pan')" title="Рука">✋</button>
+        <div class="sb-tool-sep"></div>
+        <button class="sb-tool-btn" id="sbToolUpload" onclick="setSbTool('upload')" title="Загрузить файл">⬆</button>
+        <button class="sb-tool-btn" id="sbToolShapes" onclick="setSbTool('shapes')" title="Формы">✦</button>
+        <button class="sb-tool-btn" id="sbToolSticker" onclick="setSbTool('sticker')" title="Стикер">📌</button>
+        <div class="sb-tool-sep"></div>
+        <button class="sb-tool-btn" id="sbToolColor" onclick="setSbTool('color')" title="Цвет">🎨</button>
+        <div class="sb-tool-sep"></div>
+        <button class="sb-tool-btn" onclick="switchSbMode('dev')" title="Выйти из Канвы (Esc)" style="font-size:12px;">✕</button>
+      </div>
+      <div class="storyboard-grid" id="storyboardGrid">
+        <!-- populated by JS -->
+      </div>
+      <div style="padding:12px 0; text-align:center;">
+        <button class="action-btn" style="padding:8px 24px;" onclick="addScene(); renderStoryboard(); renderSceneList(); showToast('➕ Кадр добавлен')">➕ Добавить кадр</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR: AI Assistants -->
+  <div class="sidebar-right" id="sidebarRight">
+    <div class="assistant-tabs" id="assistantTabs">
+      <div class="assistant-tab active" data-panel="camera" title="AI-Оператор">
+        📷
+        <span class="tab-label">Оператор</span>
+      </div>
+      <div class="assistant-tab" data-panel="art" title="Локация">
+        🌍
+        <span class="tab-label">Локация</span>
+      </div>
+      <div class="assistant-tab" data-panel="style" title="Стиль">
+        🖌
+        <span class="tab-label">Стиль</span>
+      </div>
+      <div class="assistant-tab" data-panel="light" title="AI-Свет">
+        💡
+        <span class="tab-label">Свет</span>
+      </div>
+      <div class="assistant-tab" data-panel="chars" title="Персонажи">
+        👤
+        <span class="tab-label">Персонажи</span>
+      </div>
+      <div class="assistant-tab" data-panel="objects" title="Объекты">
+        📦
+        <span class="tab-label">Объекты</span>
+      </div>
+    </div>
+
+    <!-- PANEL: Camera / Operator -->
+    <div class="assistant-panel active" id="panel-camera" style="--ctrl-accent: var(--accent-camera)">
+      <div class="preset-block" data-panel="camera">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📷 Тип камеры</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-camera)">ARRI Alexa</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">RED V-Raptor</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Sony Venice</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Canon C70</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">35mm плёнка</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">16mm плёнка</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🔭 Объектив</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">14mm</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">24mm</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-camera)">35mm</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">50mm</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">85mm</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">135mm</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">200mm+</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📐 Ракурс / Крупность</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Деталь</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Крупный план</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-camera)">Средний план</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Поясной</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Общий план</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Дальний план</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📏 Угол камеры</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-camera)">Уровень глаз</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Нижний</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Верхний</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Bird's eye</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Dutch angle</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🔍 Глубина резкости</div>
+        <div class="ctrl-slider-row">
+          <div class="ctrl-slider-label">DOF</div>
+          <input type="range" class="ctrl-slider" min="0" max="100" value="30">
+          <div class="ctrl-slider-val">f/2.0</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📐 Композиция</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-camera)">Правило третей</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Золотое сечение</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Центральная</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Диагональ</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-camera)">Симметрия</div>
+        </div>
+      </div>
+      <button class="apply-btn" style="background: linear-gradient(135deg, var(--accent-camera), #2C9E98); color: #000;">Применить к сцене</button>
+      <button class="save-preset-btn" onclick="openSavePresetModal('camera')">💾 Сохранить как пресет</button>
+    </div>
+
+    <!-- PANEL: Art Director -->
+    <div class="assistant-panel" id="panel-art" style="--ctrl-accent: var(--accent-art)">
+      <div class="preset-block" data-panel="art">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🏠 Локации проекта</div>
+        <div id="locationList">
+          <div class="character-card">
+            <div class="char-avatar">🌲</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Радиоактивный лес</div>
+              <div class="char-desc">Механические деревья, неоновый туман, радиоактивное свечение</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="loadRefPreview(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="char-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:80px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+          <div class="character-card">
+            <div class="char-avatar">🏚</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Бункер бабушки</div>
+              <div class="char-desc">Подземное убежище, стальные стены, голографические экраны</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="loadRefPreview(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="char-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:80px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+        </div>
+        <button class="action-btn" style="width:100%; margin-top:8px; justify-content:center;" onclick="addLocationCard()">+ Добавить локацию</button>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🌤 Погода / Время суток</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">День ясный</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Рассвет</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-art)">Сумерки</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Ночь</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Дождь</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Туман</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Снег</div>
+        </div>
+      </div>
+      <button class="apply-btn" style="background: linear-gradient(135deg, var(--accent-art), #8B5CF6); color: #fff;">Применить к сцене</button>
+      <button class="save-preset-btn" onclick="openSavePresetModal('art')">💾 Сохранить как пресет</button>
+    </div>
+
+    <!-- PANEL: Style -->
+    <div class="assistant-panel" id="panel-style" style="--ctrl-accent: var(--accent-art)">
+      <div class="preset-block" data-panel="style">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🎨 Цветовая палитра</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-art)">Teal & Orange</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Холодные тона</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Тёплые тона</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Neon</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Desaturated</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Монохром</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🖌 Визуальный стиль</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-art)">Фотореалистичный</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Аниме</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">3D-рендер</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Комикс</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Живопись</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Пиксель-арт</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Эскиз / Sketch</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🎨 Художник / Референс стиля</div>
+        <div class="block-subtitle" style="font-size:10px; margin-top:-4px; margin-bottom:6px;">in the style of...</div>
+        <div class="ctrl-options" id="artistChips">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Greg Rutkowski</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Simon Stålenhag</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-art)">Moebius</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Syd Mead</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Ralph McQuarrie</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Craig Mullins</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">Zdzisław Beksiński</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-art)">H.R. Giger</div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <input class="ctrl-input" id="artistInput" placeholder="Другой художник..." style="flex:1; margin:0;">
+          <button class="action-btn" style="padding:4px 10px; white-space:nowrap;" onclick="addArtistChip()">+ Добавить</button>
+        </div>
+      </div>
+      <button class="apply-btn" style="background: linear-gradient(135deg, var(--accent-art), #8B5CF6); color: #fff;">Применить к сцене</button>
+      <button class="apply-btn" style="background: transparent; border: 1px solid var(--accent-art); color: var(--accent-art); margin-top:6px;" onclick="applyStyleToAll()">Применить ко всем кадрам</button>
+    </div>
+
+    <!-- PANEL: Lighting -->
+    <div class="assistant-panel" id="panel-light" style="--ctrl-accent: var(--accent-script)">
+      <div class="preset-block" data-panel="light">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">💡 Основной источник</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Естественный</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-script)">Студийный</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Практический</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Неоновый</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Свечение экранов</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📐 Направление света</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-script)">Фронтальный</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Боковой</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Контровой</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Верхний</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Нижний</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Рембрандт</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">🌡 Цветовая температура</div>
+        <div class="ctrl-slider-row">
+          <div class="ctrl-slider-label">Кельвины</div>
+          <input type="range" class="ctrl-slider" min="0" max="100" value="55">
+          <div class="ctrl-slider-val">5500K</div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">✨ Световые эффекты</div>
+        <div class="ctrl-options">
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Блики</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Лучи</div>
+          <div class="ctrl-chip selected" style="--ctrl-accent: var(--accent-script)">Lens flare</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Мерцание</div>
+          <div class="ctrl-chip" style="--ctrl-accent: var(--accent-script)">Силуэт</div>
+        </div>
+      </div>
+      <button class="apply-btn" style="background: linear-gradient(135deg, var(--accent-script), #C4A020); color: #000;">Применить свет</button>
+      <button class="save-preset-btn" onclick="openSavePresetModal('light')">💾 Сохранить как пресет</button>
+    </div>
+
+    <!-- PANEL: Characters -->
+    <div class="assistant-panel" id="panel-chars" style="--ctrl-accent: var(--accent-pink)">
+      <div class="preset-block" data-panel="chars">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">👤 Персонажи проекта</div>
+        <div id="charList">
+          <div class="character-card">
+            <div class="char-avatar">🦸‍♀️</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Красная шапочка</div>
+              <div class="char-desc">Девушка, 20 лет, красный кибер-плащ, LED-полосы, тёмные волосы</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="loadRefPreview(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="char-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:80px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+          <div class="character-card">
+            <div class="char-avatar">🐺</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Волк-андроид</div>
+              <div class="char-desc">Гуманоидный робот, хромированное тело, голограммные глаза</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="loadRefPreview(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="char-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:80px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+          <div class="character-card">
+            <div class="char-avatar">👵</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Бабушка</div>
+              <div class="char-desc">Пожилая женщина, кибер-импланты, живёт в бункере</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="loadRefPreview(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="char-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:80px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+        </div>
+        <button class="action-btn" style="width:100%; margin-top:8px; justify-content:center;" onclick="addCharCard()">+ Создать персонажа</button>
+      </div>
+    </div>
+
+    <!-- PANEL: Objects / Environment -->
+    <div class="assistant-panel" id="panel-objects" style="--ctrl-accent: var(--accent-green)">
+      <div class="preset-block" data-panel="objects">
+        <div class="preset-header">
+          <div class="ctrl-label">⚡ Пресет</div>
+          <div class="preset-toggle" onclick="togglePreset(this)"></div>
+        </div>
+        <div class="preset-dropdown-wrap">
+          <select class="preset-dropdown" onchange="applyPreset(this)">
+            <option value="">Выберите пресет...</option>
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">📦 Объекты проекта</div>
+        <div id="objectList">
+          <div class="character-card">
+            <div class="char-avatar">🌲</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Мех. деревья</div>
+              <div class="char-desc">Механические деревья с неоновой подсветкой</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="(function(e){const r=new FileReader();r.onload=ev=>{var p=e.target.closest('.char-info').querySelector('.obj-ref-preview');p.querySelector('img').src=ev.target.result;p.style.display='block'};r.readAsDataURL(e.target.files[0])})(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="obj-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:70px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+          <div class="character-card">
+            <div class="char-avatar">🏠</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Бункер</div>
+              <div class="char-desc">Подземный бункер, стальные двери, голографические панели</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="(function(e){const r=new FileReader();r.onload=ev=>{var p=e.target.closest('.char-info').querySelector('.obj-ref-preview');p.querySelector('img').src=ev.target.result;p.style.display='block'};r.readAsDataURL(e.target.files[0])})(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="obj-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:70px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+          <div class="character-card">
+            <div class="char-avatar">🧺</div>
+            <div class="char-info" style="flex:1">
+              <div class="char-name">@Корзинка</div>
+              <div class="char-desc">Плетёная корзина с медикаментами</div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;">
+                <input type="file" accept="image/*" style="display:none;" onchange="(function(e){const r=new FileReader();r.onload=ev=>{var p=e.target.closest('.char-info').querySelector('.obj-ref-preview');p.querySelector('img').src=ev.target.result;p.style.display='block'};r.readAsDataURL(e.target.files[0])})(event)">
+                <span style="font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:4px;padding:3px 8px;">📎 Фото-референс</span>
+              </label>
+              <div class="obj-ref-preview" style="display:none;margin-top:4px;position:relative;"><img style="width:100%;border-radius:4px;object-fit:cover;max-height:70px;"/><button onclick="this.parentElement.style.display='none'" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;">✕</button></div>
+            </div>
+          </div>
+        </div>
+        <button class="action-btn" style="width:100%; margin-top:8px; justify-content:center;" onclick="addObjectCard()">+ Добавить объект</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SAVE PRESET MODAL (single role) -->
+<div class="preset-modal-overlay" id="savePresetModal">
+  <div class="preset-modal">
+    <h3>Сохранить пресет</h3>
+    <input type="text" id="presetNameInput" placeholder="Название пресета...">
+    <div class="preset-modal-btns">
+      <button class="btn-cancel" onclick="closeSavePresetModal()">Отмена</button>
+      <button class="btn-save" onclick="savePreset()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE COMBO PRESET MODAL -->
+<div class="preset-modal-overlay" id="comboPresetModal">
+  <div class="preset-modal">
+    <h3>Сохранить комбо-пресет</h3>
+    <input type="text" id="comboPresetNameInput" placeholder="Название комбо-пресета...">
+    <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Включить роли:</div>
+    <div class="preset-modal-roles" id="comboRoleCheckboxes">
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        🎬 Режиссёр
+        <input type="checkbox" value="director">
+      </label>
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        📷 Оператор
+        <input type="checkbox" value="camera">
+      </label>
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        🎨 Художник
+        <input type="checkbox" value="art">
+      </label>
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        💡 Свет
+        <input type="checkbox" value="light">
+      </label>
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        👤 Персонажи
+        <input type="checkbox" value="chars">
+      </label>
+      <label class="preset-modal-role" onclick="this.classList.toggle('checked')">
+        <div class="preset-modal-check">✓</div>
+        📦 Объекты
+        <input type="checkbox" value="objects">
+      </label>
+    </div>
+    <div class="preset-modal-btns">
+      <button class="btn-cancel" onclick="closeComboPresetModal()">Отмена</button>
+      <button class="btn-save" onclick="saveComboPreset()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROJECT MODAL -->
+<div class="modal-overlay edit-project-modal" id="editProjectModal">
+  <div class="modal">
+    <h2>Редактирование проекта</h2>
+    <p>Измените параметры проекта</p>
+    <div class="edit-field">
+      <div class="edit-field-label">Обложка</div>
+      <div class="edit-cover-preview" id="editCoverPreview" onclick="document.getElementById('editCoverInput').click()">
+        Нажмите для загрузки обложки
+      </div>
+      <input type="file" id="editCoverInput" accept="image/*" style="display:none" onchange="previewEditCover(this)">
+    </div>
+    <div class="edit-field">
+      <div class="edit-field-label">Название проекта</div>
+      <input type="text" id="editProjectName" placeholder="Название проекта...">
+    </div>
+    <div class="edit-field">
+      <div class="edit-field-label">Описание</div>
+      <textarea id="editProjectDesc" rows="2" placeholder="Краткое описание..." style="resize:vertical"></textarea>
+    </div>
+    <div class="edit-field">
+      <div class="edit-field-label">Статус</div>
+      <select id="editProjectStatus">
+        <option value="active">Активный</option>
+        <option value="paused">На паузе</option>
+        <option value="review">На ревью</option>
+        <option value="done">Завершён</option>
+      </select>
+    </div>
+    <div class="edit-field">
+      <div class="edit-field-label">Участники</div>
+      <div class="edit-participants-list" id="editParticipants"></div>
+      <input type="text" id="editAddParticipant" placeholder="Добавить участника..." style="margin-top:6px" onkeydown="if(event.key==='Enter'){addEditParticipant(this.value);this.value='';}">
+    </div>
+    <div class="edit-modal-actions">
+      <button class="edit-btn-archive" onclick="trashEditProject()" style="color:var(--accent-director)">🗑 В корзину</button>
+      <button class="edit-btn-archive" onclick="archiveEditProject()">📦 В архив</button>
+      <button class="edit-btn-cancel" onclick="closeEditModal()">Отмена</button>
+      <button class="edit-btn-save" onclick="saveEditProject()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW PROJECT MODAL -->
+<div class="modal-overlay" id="newProjectModal">
+  <div class="modal">
+    <h2>Новый проект</h2>
+    <p>Выберите, как начать работу над видео</p>
+    <div class="modal-grid">
+      <div class="modal-option" onclick="closeModal(); switchStage('script');">
+        <div class="modal-option-icon">✍️</div>
+        <div class="modal-option-title">От сценария</div>
+        <div class="modal-option-desc">Загрузите или напишите текст, AI разобьёт его на сцены</div>
+      </div>
+      <div class="modal-option" onclick="closeModal(); switchStage('storyboard');">
+        <div class="modal-option-icon">🖼</div>
+        <div class="modal-option-title">От изображения</div>
+        <div class="modal-option-desc">Начните с ключевого кадра, сюжет развернётся вокруг</div>
+      </div>
+      <div class="modal-option" onclick="closeModal(); switchStage('script');">
+        <div class="modal-option-icon">📄</div>
+        <div class="modal-option-title">Пустой проект</div>
+        <div class="modal-option-desc">Начните с нуля и добавляйте сцены вручную</div>
+      </div>
+      <div class="modal-option" onclick="closeModal(); switchStage('script');">
+        <div class="modal-option-icon">📁</div>
+        <div class="modal-option-title">Из шаблона</div>
+        <div class="modal-option-desc">Выберите готовый шаблон: клип, трейлер, реклама</div>
+      </div>
+    </div>
+  </div>
+</div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
